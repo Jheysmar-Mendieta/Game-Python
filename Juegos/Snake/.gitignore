@@ -1,0 +1,21 @@
+# Base de datos local
+*.sql
+
+# Archivos de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Entornos virtuales
+venv/
+env/
+
+# Configuración personal
+config_local.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
