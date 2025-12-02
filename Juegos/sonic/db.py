@@ -1,4 +1,4 @@
-"""Manejo de la base de datos para Snake"""
+"""Manejo de la base de datos para Sonic"""
 import mysql.connector
 from mysql.connector import Error
 from config import DB_CONFIG
@@ -76,18 +76,25 @@ class DatabaseManager:
             print(f"✗ Error al obtener game_id: {e}")
             return None
     
-    def guardar_puntuacion(self, username, game_name, score):
-        """Guarda una puntuación en la base de datos"""
+    def guardar_puntuacion(self, username, anillos, tiempo):
+        """Guarda una puntuación en la base de datos
+        
+        Para Sonic, la puntuación será: anillos * 100 + (3600 - tiempo)
+        Esto premia recolectar anillos y completar rápido
+        """
         if not self.connection:
             print("✗ No hay conexión a la base de datos")
             return False
         
         try:
+            # Calcular puntuación total
+            score = (anillos * 100) + max(0, 3600 - tiempo)
+            
             user_id = self.obtener_o_crear_usuario(username)
             if not user_id:
                 return False
             
-            game_id = self.obtener_game_id(game_name)
+            game_id = self.obtener_game_id("Sonic")
             if not game_id:
                 return False
             
@@ -97,20 +104,20 @@ class DatabaseManager:
             self.connection.commit()
             cursor.close()
             
-            print(f"✓ Puntuación guardada: {username} - {score} puntos")
+            print(f"✓ Puntuación guardada: {username} - {score} puntos ({anillos} anillos, {tiempo}s)")
             return True
             
         except Error as e:
             print(f"✗ Error al guardar puntuación: {e}")
             return False
     
-    def obtener_top_puntuaciones(self, game_name, limite=10):
-        """Obtiene las mejores puntuaciones de un juego"""
+    def obtener_top_puntuaciones(self, limite=10):
+        """Obtiene las mejores puntuaciones de Sonic"""
         if not self.connection:
             return []
         
         try:
-            game_id = self.obtener_game_id(game_name)
+            game_id = self.obtener_game_id("Sonic")
             if not game_id:
                 return []
             

@@ -1,7 +1,7 @@
-"""Manejo de la base de datos para Snake"""
+"""Manejo de la base de datos para Memory Game"""
 import mysql.connector
 from mysql.connector import Error
-from config import DB_CONFIG
+from config import DB_CONFIG, GAME_NAME
 
 
 class DatabaseManager:
@@ -9,6 +9,7 @@ class DatabaseManager:
     
     def __init__(self):
         self.connection = None
+        self.game_name = GAME_NAME
         self.conectar()
     
     def conectar(self):
@@ -17,9 +18,11 @@ class DatabaseManager:
             self.connection = mysql.connector.connect(**DB_CONFIG)
             if self.connection.is_connected():
                 print("✓ Conexión exitosa a la base de datos")
+                return True
         except Error as e:
             print(f"✗ Error al conectar a la base de datos: {e}")
             self.connection = None
+            return False
     
     def cerrar(self):
         """Cierra la conexión con la base de datos"""
@@ -27,22 +30,29 @@ class DatabaseManager:
             self.connection.close()
             print("✓ Conexión cerrada")
     
+    def _verificar_conexion(self):
+        """Verifica y reestablece la conexión si es necesario"""
+        try:
+            if not self.connection or not self.connection.is_connected():
+                print("⚠ Reconectando a la base de datos...")
+                return self.conectar()
+            return True
+        except Error:
+            return self.conectar()
+    
     def obtener_o_crear_usuario(self, username):
         """Obtiene el ID de un usuario o lo crea si no existe"""
-        if not self.connection:
+        if not self._verificar_conexion():
             return None
         
         try:
             cursor = self.connection.cursor()
-            
-            # Buscar usuario existente
             cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
             resultado = cursor.fetchone()
             
             if resultado:
                 user_id = resultado[0]
             else:
-                # Crear nuevo usuario
                 cursor.execute("INSERT INTO users (username) VALUES (%s)", (username,))
                 self.connection.commit()
                 user_id = cursor.lastrowid
@@ -50,44 +60,50 @@ class DatabaseManager:
             
             cursor.close()
             return user_id
-            
         except Error as e:
             print(f"✗ Error al obtener/crear usuario: {e}")
+            if self.connection:
+                self.connection.rollback()
             return None
     
-    def obtener_game_id(self, game_name):
-        """Obtiene el ID de un juego por su nombre"""
-        if not self.connection:
+    def obtener_game_id(self):
+        """Obtiene el ID del juego Memory Game"""
+        if not self._verificar_conexion():
             return None
         
         try:
             cursor = self.connection.cursor()
-            cursor.execute("SELECT id FROM games WHERE game_name = %s", (game_name,))
+            cursor.execute("SELECT id FROM games WHERE game_name = %s", (self.game_name,))
             resultado = cursor.fetchone()
-            cursor.close()
             
-            if resultado:
-                return resultado[0]
+            if not resultado:
+                # Crear el juego si no existe
+                cursor.execute("INSERT INTO games (game_name) VALUES (%s)", (self.game_name,))
+                self.connection.commit()
+                game_id = cursor.lastrowid
             else:
-                print(f"✗ Juego '{game_name}' no encontrado en la base de datos")
-                return None
-                
+                game_id = resultado[0]
+            
+            cursor.close()
+            return game_id
         except Error as e:
             print(f"✗ Error al obtener game_id: {e}")
             return None
     
-    def guardar_puntuacion(self, username, game_name, score):
+    def guardar_puntuacion(self, username, score, nivel):
         """Guarda una puntuación en la base de datos"""
-        if not self.connection:
+        username_nivel = f"{username}-Nivel{nivel}"
+        
+        if not self._verificar_conexion():
             print("✗ No hay conexión a la base de datos")
             return False
         
         try:
-            user_id = self.obtener_o_crear_usuario(username)
+            user_id = self.obtener_o_crear_usuario(username_nivel)
             if not user_id:
                 return False
             
-            game_id = self.obtener_game_id(game_name)
+            game_id = self.obtener_game_id()
             if not game_id:
                 return False
             
@@ -97,20 +113,21 @@ class DatabaseManager:
             self.connection.commit()
             cursor.close()
             
-            print(f"✓ Puntuación guardada: {username} - {score} puntos")
+            print(f"✓ Puntuación guardada: {username_nivel} - {score} puntos")
             return True
-            
         except Error as e:
             print(f"✗ Error al guardar puntuación: {e}")
+            if self.connection:
+                self.connection.rollback()
             return False
     
-    def obtener_top_puntuaciones(self, game_name, limite=10):
-        """Obtiene las mejores puntuaciones de un juego"""
-        if not self.connection:
+    def obtener_top_puntuaciones(self, nivel, limite=5):
+        """Obtiene las mejores puntuaciones de un nivel"""
+        if not self._verificar_conexion():
             return []
         
         try:
-            game_id = self.obtener_game_id(game_name)
+            game_id = self.obtener_game_id()
             if not game_id:
                 return []
             
@@ -119,16 +136,46 @@ class DatabaseManager:
                 SELECT u.username, s.score, s.created_at
                 FROM scores s
                 JOIN users u ON s.user_id = u.id
-                WHERE s.game_id = %s
-                ORDER BY s.score DESC
+                WHERE s.game_id = %s AND u.username LIKE %s
+                ORDER BY s.score ASC
                 LIMIT %s
             """
-            cursor.execute(query, (game_id, limite))
+            patron = f"%-Nivel{nivel}"
+            cursor.execute(query, (game_id, patron, limite))
             resultados = cursor.fetchall()
             cursor.close()
             
             return resultados
-            
         except Error as e:
             print(f"✗ Error al obtener puntuaciones: {e}")
             return []
+    
+    def verificar_nuevo_record(self, username, nivel, score):
+        """Verifica si el score es un nuevo récord personal"""
+        username_nivel = f"{username}-Nivel{nivel}"
+        
+        if not self._verificar_conexion():
+            return False
+        
+        try:
+            user_id = self.obtener_o_crear_usuario(username_nivel)
+            if not user_id:
+                return True
+            
+            game_id = self.obtener_game_id()
+            if not game_id:
+                return False
+            
+            cursor = self.connection.cursor()
+            query = "SELECT MIN(score) FROM scores WHERE user_id = %s AND game_id = %s"
+            cursor.execute(query, (user_id, game_id))
+            resultado = cursor.fetchone()
+            cursor.close()
+            
+            if resultado[0] is None:
+                return True
+            
+            return score < resultado[0]
+        except Error as e:
+            print(f"✗ Error al verificar récord: {e}")
+            return False

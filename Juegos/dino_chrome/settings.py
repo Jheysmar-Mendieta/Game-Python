@@ -1,0 +1,67 @@
+"""Configuración general del juego Dino Chrome"""
+
+# Configuración de ventana
+WINDOW_WIDTH = 1000
+WINDOW_HEIGHT = 500
+FPS = 60
+
+# Colores
+COLOR_DAY_BG = (247, 247, 247)
+COLOR_NIGHT_BG = (32, 33, 36)
+COLOR_DAY_GROUND = (83, 83, 83)
+COLOR_NIGHT_GROUND = (150, 150, 150)
+COLOR_DAY_OBSTACLE = (83, 83, 83)
+COLOR_NIGHT_OBSTACLE = (150, 150, 150)
+COLOR_DAY_CLOUD = (200, 200, 200)
+COLOR_NIGHT_STAR = (255, 255, 255)
+COLOR_TEXT = (83, 83, 83)
+
+# Configuración del dinosaurio
+DINO_WIDTH = 44
+DINO_HEIGHT = 47
+DINO_X = 80
+DINO_GROUND_Y = 300
+DINO_JUMP_VELOCITY = -15
+GRAVITY = 0.8
+
+# Configuración del piso
+GROUND_HEIGHT = 12
+GROUND_Y = 350
+
+# Configuración de obstáculos
+CACTUS_SMALL_WIDTH = 17
+CACTUS_SMALL_HEIGHT = 35
+CACTUS_LARGE_WIDTH = 25
+CACTUS_LARGE_HEIGHT = 50
+OBSTACLE_MIN_DISTANCE = 300
+OBSTACLE_MAX_DISTANCE = 600
+INITIAL_OBSTACLE_SPEED = 8
+SPEED_INCREMENT = 0.005
+
+# Configuración de nubes/estrellas
+CLOUD_WIDTH = 46
+CLOUD_HEIGHT = 14
+CLOUD_MIN_Y = 50
+CLOUD_MAX_Y = 150
+CLOUD_SPEED = 2
+
+# Puntuación
+SCORE_INCREMENT = 0.25
+CHECKPOINT_SCORE = 100
+NIGHT_MODE_SCORE = 700
+NIGHT_MODE_DURATION = 500
+
+# Fuentes
+FONT_NAME = None
+FONT_SIZE = 20
+TITLE_SIZE = 48
+
+# Base de datos
+DB_CONFIG = {
+    'host': 'localhost',
+    'user': 'root',
+    'password': '',
+    'database': 'games_db'
+}
+
+GAME_NAME = 'Dino Chrome'
